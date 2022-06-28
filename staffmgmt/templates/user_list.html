@@ -1,0 +1,53 @@
+{% extends 'layout.html' %}
+{% block content %}
+    <div class="container">
+        <div style="margin-bottom: 10px">
+            <a class='btn btn-success'  href="/user/modelform/add/">
+                <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> 新建用户
+            </a>
+        </div>
+        <div>
+            <div class="panel panel-default">
+                <!-- Default panel contents -->
+                <div class="panel-heading">
+                    <span class="glyphicon glyphicon-th-list" aria-hidden="true"></span> 用户列表
+                </div>
+
+                <!-- Table -->
+                <table class="table" style="border: 1px">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>姓名</th>
+                        <th>密码</th>
+                        <th>年龄</th>
+                        <th>薪水</th>
+                        <th>入职时间</th>
+                        <th>部门</th>
+                        <th>性别</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for user in query_set %}
+                        <tr>
+                            <th>{{ user.id }}</th>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.password }}</td>
+                            <td>{{ user.age }}</td>
+                            <td>{{ user.salary }}</td>
+                            <td>{{ user.create_time|date:"Y-m-d" }}</td>
+                            <td>{{ user.depart.title}}</td>
+                            <td>{{ user.get_gender_display }}</td>
+                            <td>
+                                <a class="btn-primary btn-xs" href="/user/{{ user.id }}/edit/">编辑</a>
+                                <a class="btn-danger btn-xs" href="/user/{{ user.id }}/del/">删除</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
