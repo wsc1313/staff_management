@@ -20,3 +20,21 @@ class UserInfo(models.Model):
     depart = models.ForeignKey(verbose_name='部门', to='Department', to_field='id', blank=True, null=True, on_delete=models.SET_NULL)
     gender_choice = ((1, '男'), (2, '女'))
     gender = models.SmallIntegerField(verbose_name='性别', choices=gender_choice)
+
+class PrettyNum(models.Model):
+    mobile = models.CharField(verbose_name='手机号', max_length=11)
+    price = models.IntegerField(verbose_name='价格', default=0)
+    level_choice = (
+        (1, '一级'),
+        (2, '二级'),
+        (3, '三级'),
+        (4, '四级'),
+    )
+    status_choice = (
+        (1, '已使用'),
+        (2, '未使用'),
+    )
+    level = models.SmallIntegerField(verbose_name='级别', choices=level_choice, default=1)
+    status = models.SmallIntegerField(verbose_name='状态', choices=status_choice, default=2)
+
+
