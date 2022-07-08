@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect
 from staffmgmt import models
+from django import forms
 from django.utils.safestring import mark_safe
+
+from staffmgmt.utils.pagination import Pagination
 
 
 # Create your views here.
@@ -9,7 +12,12 @@ from django.utils.safestring import mark_safe
 def depart_list(req):
     # 从数据库获取数据
     depart_list = models.Department.objects.all()
-    return render(req, 'depart_list.html', {'depart_list': depart_list})
+    pagination_obj = Pagination(req, depart_list, page_size=3)
+    render_dict = {
+        'depart_list': pagination_obj.page_queryset,
+        'http_string': pagination_obj.make_html(),
+    }
+    return render(req, 'depart_list.html', render_dict)
 
 
 def depart_add(req):
@@ -37,12 +45,17 @@ def depart_edit(req, nid):
 
 def user_list(req):
     query_set = models.UserInfo.objects.all()
-    return render(req, 'user_list.html', {'query_set': query_set})
+    pagination_obj = Pagination(req, query_set, page_size=2)
+    render_dict = {
+        'query_set': pagination_obj.page_queryset,
+        'http_string': pagination_obj.make_html(),
+    }
+    return render(req, 'user_list.html', render_dict)
 
 
 ##################   ModelForm方式添加用户   ##########################
 
-from django import forms
+
 
 
 class UserModelForm(forms.ModelForm):
@@ -92,78 +105,22 @@ def user_del(req, nid):
 
 
 def pretty_list(req):
-    # for i in range(0, 300):
-    #     models.PrettyNum.objects.create(mobile='18888888888', price=10, level=1, status=2)
-    page_num = int(req.GET.get('page', 1))
-    page_size = 10
-    start = (page_num - 1) * page_size
-    end = page_num * page_size
-    query_set = models.PrettyNum.objects.all().order_by('-level')[start:end]
-    total_count = models.PrettyNum.objects.all().count()
-    total_page_cout, div = divmod(total_count, page_size)
-    if div:
-        total_page_cout += 1
-    # 计算出当前页的前5页 和 后5页
-    plus = 5
-    if total_page_cout <= plus * 2 +1:
-        start_page = 1
-        end_page = total_page_cout
-    else:
-        if page_num <= plus:
-            start_page = 1
-            end_page = plus * 2 + 1
-        else:
-            if page_num + plus > total_page_cout:
-                end_page = total_page_cout
-                start_page = total_page_cout - plus * 2
-            else:
-                start_page = page_num - plus
-                end_page = page_num + plus
-
-    page_str_list = []
-    # 尾页
-    page_str_list.append('<li><a href="?page=1">首页</a></li>')
-    # 上一页
-    if page_num > 1:
-        prev = page_num - 1
-        tpl = f'<li><a href="?page={prev}">上一页</a></li>'
-    else:
-        tpl = '<li><a href="?page=1">上一页</a></li>'
-    page_str_list.append(tpl)
-
-    for i in range(start_page, end_page + 1):
-        if i == page_num:
-            tpl = f'<li class="active"><a href="?page={i}">{i}</a></li>'
-        else:
-            tpl = f'<li><a href="?page={i}">{i}</a></li>'
-        page_str_list.append(tpl)
-    # 下一页
-    if page_num < total_page_cout:
-        prev = page_num + 1
-        tpl = f'<li><a href="?page={prev}">下一页</a></li>'
-    else:
-        tpl = f'<li><a href="?page={total_page_cout}">下一页</a></li>'
-    page_str_list.append(tpl)
-
-    # 尾页
-    page_str_list.append(f'<li><a href="?page={total_page_cout}">尾页</a></li>')
-
-    # 指定页面搜索
-    serch_string = """
-        <li>
-            <form method="get" style='float:left;margin-left:-1px'>
-                <input type="text" name='page' style='position:relative;float:left;display:inline-block;width:80px;border-radius:0;' 
-                class="form-control" placeholder="页码">
-                <button class="btn btn-default" type="submit">Go!</button>
-            </form>
-        </li>
-        """
-    page_str_list.append(serch_string)
-
-    page_str = mark_safe(''.join(page_str_list))
+    # 添加搜索靓号功能
+    serch_dict = {}
+    serch_value = req.GET.get('ser_data', '')
+    if serch_value:
+        serch_dict['mobile__contains'] = serch_value
+    queryset = models.PrettyNum.objects.filter(**serch_dict).order_by('-level')
 
 
-    return render(req, 'prettynum_list.html', {'query_set': query_set, 'page_str': page_str})
+    # 创建一个分页类的实例
+    pagination_obj = Pagination(req, queryset)
+    render_dict = {
+        'serch_value': serch_value,
+        'query_set': pagination_obj.page_queryset,
+        'page_str': pagination_obj.make_html(),
+    }
+    return render(req, 'prettynum_list.html', render_dict)
 
 
 from django.core.validators import RegexValidator
@@ -174,14 +131,14 @@ class PrettyNumForm(forms.ModelForm):
     class Meta:
         model = models.PrettyNum
         fields = '__all__'
-    # 验证方法1：
+    # 验证方法1:
     mobile = forms.CharField(label='手机号', validators=[RegexValidator(r'^1\d{10}$', '请输入正确的手机号格式！')])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             field.widget.attrs = {'class': 'form-control', 'placeholder': field.label}
-
+    # 验证方法2:
     def clean_mobile(self):
         txt_mobile = self.cleaned_data['mobile']
         exist = models.PrettyNum.objects.filter(mobile=txt_mobile).exists()
@@ -203,8 +160,10 @@ def pretty_add(req):
 
 # 为“靓号编辑”定义的ModelForm类和view函数：
 class PrettyEditModelForm(forms.ModelForm):
-    # 数据校验
+    # 数据校验1
     mobile = forms.CharField(label='手机号', validators=[RegexValidator(r'^1\d{10}$', '输入的手机号格式不正确！！！')])
+    # mobile = forms.CharField(disabled=True, label='手机号') 编辑的时候显示手机号但是不可以进行编辑，使用disable=True参数
+
 
     class Meta:
         model = models.PrettyNum
@@ -214,7 +173,7 @@ class PrettyEditModelForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             field.widget.attrs = {'class': 'form-control', 'placeholder': field.label}
-
+    # 通过钩子函数进行数据校验：
     def clean_mobile(self):
         txt_mobile = self.cleaned_data['mobile']
         current_id = self.instance.pk
